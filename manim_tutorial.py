@@ -213,3 +213,112 @@ class PlotFunctions(GraphScene):
     def func_sin(self, x):
         return np.sin(x)
 
+
+class ExampleApproximation(GraphScene):
+    CONFIG = {
+        "function": lambda x: np.cos(x),
+        "function_color": BLUE,
+        "taylor": [
+            lambda x: 1, 
+            lambda x: 1 - x**2 / math.factorial(2), 
+            lambda x: 1 - x**2 / math.factorial(2) + x**4 / math.factorial(4), 
+            lambda x: 1 - x**2 / math.factorial(2) + x**4 / math.factorial(4) - x**6 / math.factorial(6),
+            lambda x: 1 - x**2 / math.factorial(2) + x**4 / math.factorial(4) - x**6 / math.factorial(6) + x**8 / math.factorial(8), 
+            lambda x: 1 - x**2 / math.factorial(2) + x**4 / math.factorial(4) - x**6 / math.factorial(6) + x**8 / math.factorial(8) - x**10 / math.factorial(10),
+            ],
+        "center_point": 0,
+        "approximation_color": GREEN,
+        "x_min": -10,
+        "x_max": 10,
+        "y_min": -1.5,
+        "y_max": 1.5,
+        "graph_origin": ORIGIN,
+        "x_labeled_nums": range(-10, 12, 2)
+    }
+
+    def construct(self):
+        self.setup_axes(animate=True)
+        func_graph_cos = self.get_graph(self.function, self.function_color)
+        approx_graphs = [self.get_graph(f, self.approximation_color) for f in self.taylor]
+        term_nums = [TexMobject("n = " + str(n), aligned_edge=TOP) for n in range(0, len(approx_graphs))]
+        [t.to_edge(BOTTOM, buff=SMALL_BUFF) for t in term_nums]
+
+        term = TexMobject("")
+        term.to_edge(BOTTOM, buff=SMALL_BUFF)
+
+        approx_graph = VectorizedPoint(self.input_to_graph_point(self.center_point, func_graph_cos))
+
+        self.play(ShowCreation(func_graph_cos))
+        for n, graph in enumerate(approx_graphs):
+            self.play(Transform(approx_graph, graph, run_time=2), Transform(term, term_nums[n]))
+            self.wait()
+
+
+class DrawAnAxis(Scene):
+    CONFIG = {
+        "plane_kwargs": {
+            "x_line_frequency": 2,
+            "y_line_frequency": 2
+        }
+    }
+
+    def construct(self):
+        my_plane = NumberPlane(**self.plane_kwargs)
+        my_plane.add(my_plane.get_axis_labels())
+        self.add(my_plane)
+        self.wait()
+
+
+class SimpleField(Scene):
+    CONFIG = {
+        "plane_kwargs": {
+            "color": RED
+        }
+    }
+
+    def construct(self):
+        plane = NumberPlane(**self.plane_kwargs)
+        plane.add(plane.get_axis_labels())
+        self.add(plane)
+
+        points = [x * RIGHT + y * UP
+            for x in np.arange(-5, 5, 1)
+            for y in np.arange(-5, 5, 1)
+        ]
+
+        vec_field = []
+        for point in points:
+            field = RIGHT * 0.5 + UP * 0.5
+            result = Vector(field).shift(point)
+            vec_field.append(result)
+        
+        draw_field = VGroup(*vec_field)
+        self.play(ShowCreation(draw_field))
+
+
+class FieldWithAxes(Scene):
+    CONFIG = {
+        "plane_kwargs": {
+            "color": RED_B
+        },
+        "point_charge_loc": RIGHT * 0.5 - UP * 1.5
+    }
+
+    def construct(self):
+        plane = NumberPlane(**self.plane_kwargs)
+        plane.main_lines.fade(0.9)
+        plane.add(plane.get_axis_labels())
+        self.add(plane)
+
+        field = VGroup(*[self.calc_field(x * RIGHT + y * UP)
+            for x in np.arange(-9, 9, 1)
+            for y in np.arange(-5, 5, 1)
+        ])
+        self.play(ShowCreation(field))
+
+    def calc_field(self, point):
+        x, y = point[:2]
+        rx, ry = self.point_charge_loc[:2]
+        r = math.sqrt((x - rx)**2 + (y - ry)**2)
+        efield = (point - self.point_charge_loc) / (r**3)
+        return Vector(efield).shift(point)
